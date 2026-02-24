@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Latency Test</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 { margin: 0; font-size: 1.8rem; }
+        p { color: #64748b; margin-top: 0.5rem; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover { background-color: #1d4ed8; }
+        button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+
+        .results-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .server-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .server-info { display: flex; flex-direction: column; }
+        .server-name { font-weight: 600; }
+        .server-loc { font-size: 0.85rem; color: #64748b; }
+
+        .latency-display {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        /* Status Colors */
+        .good { color: var(--success); }
+        .avg { color: var(--warning); }
+        .bad { color: var(--error); }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Global Network Latency Test</h1>
+        <p>Measure connection speed to our global points of presence.</p>
+    </header>
+
+    <div class="controls">
+        <button id="startBtn" onclick="runTests()">Start Test</button>
+    </div>
+
+    <div id="results" class="results-grid">
+        <!-- Results will appear here -->
+    </div>
+</div>
+
+<script>
+    // CONFIGURATION: Add your server URLs here.
+    // IMPORTANT: These URLs must support CORS (Cross-Origin Resource Sharing) 
+    // or exist on your own servers.
+    // For this demo, we use specific endpoints that usually allow access.
+    const servers = [
+        { name: "US East (N. Virginia)", url: "https://google.com", id: "us-east" },
+        { name: "US West (California)", url: "https://google.com", id: "us-west" }, // Using Google as a proxy example
+        { name: "Europe (Frankfurt)", url: "https://cloudflare.com", id: "eu-central" },
+        { name: "Asia Pacific (Tokyo)", url: "https://www.rakuten.co.jp/", id: "ap-tokyo" }, 
+        { name: "South America (Brazil)", url: "https://www.mercadolivre.com.br/", id: "sa-br" }
+    ];
+
+    const resultsContainer = document.getElementById('results');
+    const startBtn = document.getElementById('startBtn');
+
+    // Initialize UI
+    function init() {
+        resultsContainer.innerHTML = '';
+        servers.forEach(server => {
+            resultsContainer.innerHTML += `
+                <div class="server-card" id="card-${server.id}">
+                    <div class="server-info">
+                        <span class="server-name">${server.name}</span>
+                        <span class="server-loc">Testing: ${new URL(server.url).hostname}</span>
+                    </div>
+                    <div class="latency-display" id="latency-${server.id}">--</div>
+                </div>
+            `;
+        });
+    }
+
+    init();
+
+    async function runTests() {
+        startBtn.disabled = true;
+        startBtn.innerText = "Testing...";
+        
+        // Reset displays
+        const latencyDisplays = document.querySelectorAll('.latency-display');
+        latencyDisplays.forEach(el => {
+            el.innerHTML = '<div class="loader"></div>';
+            el.className = 'latency-display';
+        });
+
+        // Run all fetches concurrently
+        const promises = servers.map(server => performPing(server));
+        
+        await Promise.all(promises);
+
+        startBtn.disabled = false;
+        startBtn.innerText = "Start Test";
+    }
+
+    async function performPing(server) {
+        const display = document.getElementById(`latency-${server.id}`);
+        
+        try {
+            // We use performance.now() for higher precision than Date.now()
+            const startTime = performance.now();
+
+            // We use 'no-cors' mode limitation here usually returns an opaque response,
+            // but we can still measure the time until the request fails or succeeds.
+            // Note: Standard fetch with 'no-cors' returns an opaque response, 
+            // so we assume success if the network request doesn't throw.
+            
+            await fetch(server.url, {
+                method: 'GET',
+                mode: 'no-cors', // 'no-cors' allows request to go out even if no CORS headers (returns opaque)
+                cache: 'no-store'
+            });
+
+            const endTime = performance.now();
+            const latency = Math.round(endTime - startTime);
+
+            display.innerText = `${latency} ms`;
+            display.classList.add(getLatencyClass(latency));
+
+        } catch (error) {
+            console.error(error);
+            display.innerText = "Fail";
+            display.classList.add('bad');
+        }
+    }
+
+    function getLatencyClass(latency) {
+        if (latency < 100) return 'good';
+        if (latency < 250) return 'avg';
+        return 'bad';
+    }
+</script>
+
+</body>
+</html>
