@@ -162,7 +162,7 @@
     const resultsContainer = document.getElementById('results');
     const startBtn = document.getElementById('startBtn');
 
-    // Initialize UI
+    // Initialize UI - builds the initial cards with IDs
     function init() {
         resultsContainer.innerHTML = '';
         testResults = [];
@@ -179,14 +179,17 @@
         });
     }
 
+    // Call init on page load
     init();
 
     async function runTests() {
         startBtn.disabled = true;
         startBtn.innerText = "Testing...";
         
-        // Reset displays
-        testResults = [];
+        // Reset and rebuild UI - This fixes the issue on second run
+        init();
+        
+        // Show loaders for all cards
         const latencyDisplays = document.querySelectorAll('.latency-display');
         latencyDisplays.forEach(el => {
             el.innerHTML = '<div class="loader"></div>';
