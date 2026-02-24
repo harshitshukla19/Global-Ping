@@ -47,6 +47,7 @@
         .controls {
             display: flex;
             justify-content: center;
+            gap: 10px;
             margin-bottom: 2rem;
         }
 
@@ -54,7 +55,7 @@
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 12px 32px;
+            padding: 12px 24px;
             font-size: 1rem;
             border-radius: 8px;
             cursor: pointer;
@@ -64,6 +65,12 @@
 
         button:hover { background-color: #1d4ed8; }
         button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+
+        .btn-sort {
+            background-color: #64748b;
+        }
+        .btn-sort:hover { background-color: #475569; }
+        .btn-sort:disabled { background-color: #cbd5e1; cursor: not-allowed; }
 
         .results-grid {
             display: grid;
@@ -78,6 +85,12 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             background: #fff;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .server-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .server-info { display: flex; flex-direction: column; }
@@ -106,6 +119,20 @@
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Badge for rank */
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
@@ -118,6 +145,7 @@
 
     <div class="controls">
         <button id="startBtn" onclick="runTests()">Start Test</button>
+        <button id="sortBtn" class="btn-sort" onclick="sortResults()" disabled>Sort by Latency</button>
     </div>
 
     <div id="results" class="results-grid">
@@ -127,7 +155,6 @@
 
 <script>
     // CONFIGURATION: Target servers for each country
-    // Using popular websites for each region to measure latency
     const servers = [
         { name: "USA", url: "https://www.google.com", id: "usa" },
         { name: "Singapore", url: "https://www.lazada.sg", id: "singapore" },
@@ -137,12 +164,17 @@
         { name: "Asia (India)", url: "https://www.amazon.in", id: "india" }
     ];
 
+    // Store results for sorting
+    let testResults = [];
+
     const resultsContainer = document.getElementById('results');
     const startBtn = document.getElementById('startBtn');
+    const sortBtn = document.getElementById('sortBtn');
 
     // Initialize UI
     function init() {
         resultsContainer.innerHTML = '';
+        testResults = [];
         servers.forEach(server => {
             resultsContainer.innerHTML += `
                 <div class="server-card" id="card-${server.id}">
@@ -160,9 +192,11 @@
 
     async function runTests() {
         startBtn.disabled = true;
+        sortBtn.disabled = true;
         startBtn.innerText = "Testing...";
         
         // Reset displays
+        testResults = [];
         const latencyDisplays = document.querySelectorAll('.latency-display');
         latencyDisplays.forEach(el => {
             el.innerHTML = '<div class="loader"></div>';
@@ -175,17 +209,17 @@
         await Promise.all(promises);
 
         startBtn.disabled = false;
+        sortBtn.disabled = false;
         startBtn.innerText = "Start Test";
     }
 
     async function performPing(server) {
         const display = document.getElementById(`latency-${server.id}`);
+        const card = document.getElementById(`card-${server.id}`);
         
         try {
             const startTime = performance.now();
 
-            // mode: 'no-cors' allows request to proceed without CORS headers
-            // The browser will still make the request and we can measure time
             await fetch(server.url, {
                 method: 'GET',
                 mode: 'no-cors',
@@ -198,10 +232,28 @@
             display.innerText = `${latency} ms`;
             display.classList.add(getLatencyClass(latency));
 
+            // Store result for sorting
+            testResults.push({
+                id: server.id,
+                name: server.name,
+                hostname: new URL(server.url).hostname,
+                latency: latency,
+                class: getLatencyClass(latency)
+            });
+
         } catch (error) {
             console.error(`Error testing ${server.name}:`, error);
             display.innerText = "Failed";
             display.classList.add('bad');
+            
+            // Store failed result
+            testResults.push({
+                id: server.id,
+                name: server.name,
+                hostname: new URL(server.url).hostname,
+                latency: 99999, // Put failed at the end
+                class: 'bad'
+            });
         }
     }
 
@@ -209,6 +261,32 @@
         if (latency < 100) return 'good';
         if (latency < 250) return 'avg';
         return 'bad';
+    }
+
+    // Sort function
+    function sortResults() {
+        // Sort by latency (ascending - lowest first)
+        testResults.sort((a, b) => a.latency - b.latency);
+
+        // Rebuild the DOM with sorted results
+        resultsContainer.innerHTML = '';
+        
+        testResults.forEach((result, index) => {
+            resultsContainer.innerHTML += `
+                <div class="server-card">
+                    <div class="server-info">
+                        <span class="server-name">
+                            <span class="rank-badge">${index + 1}</span>
+                            ${result.name}
+                        </span>
+                        <span class="server-loc">Target: ${result.hostname}</span>
+                    </div>
+                    <div class="latency-display ${result.class}">
+                        ${result.latency === 99999 ? 'Failed' : result.latency + ' ms'}
+                    </div>
+                </div>
+            `;
+        });
     }
 </script>
 
