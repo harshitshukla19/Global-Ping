@@ -47,7 +47,6 @@
         .controls {
             display: flex;
             justify-content: center;
-            gap: 10px;
             margin-bottom: 2rem;
         }
 
@@ -55,7 +54,7 @@
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 32px;
             font-size: 1rem;
             border-radius: 8px;
             cursor: pointer;
@@ -65,12 +64,6 @@
 
         button:hover { background-color: #1d4ed8; }
         button:disabled { background-color: #94a3b8; cursor: not-allowed; }
-
-        .btn-sort {
-            background-color: #64748b;
-        }
-        .btn-sort:hover { background-color: #475569; }
-        .btn-sort:disabled { background-color: #cbd5e1; cursor: not-allowed; }
 
         .results-grid {
             display: grid;
@@ -145,7 +138,6 @@
 
     <div class="controls">
         <button id="startBtn" onclick="runTests()">Start Test</button>
-        <button id="sortBtn" class="btn-sort" onclick="sortResults()" disabled>Sort by Latency</button>
     </div>
 
     <div id="results" class="results-grid">
@@ -169,7 +161,6 @@
 
     const resultsContainer = document.getElementById('results');
     const startBtn = document.getElementById('startBtn');
-    const sortBtn = document.getElementById('sortBtn');
 
     // Initialize UI
     function init() {
@@ -192,7 +183,6 @@
 
     async function runTests() {
         startBtn.disabled = true;
-        sortBtn.disabled = true;
         startBtn.innerText = "Testing...";
         
         // Reset displays
@@ -208,14 +198,15 @@
         
         await Promise.all(promises);
 
+        // Automatically sort results after testing is complete
+        sortResults();
+
         startBtn.disabled = false;
-        sortBtn.disabled = false;
         startBtn.innerText = "Start Test";
     }
 
     async function performPing(server) {
         const display = document.getElementById(`latency-${server.id}`);
-        const card = document.getElementById(`card-${server.id}`);
         
         try {
             const startTime = performance.now();
@@ -251,7 +242,7 @@
                 id: server.id,
                 name: server.name,
                 hostname: new URL(server.url).hostname,
-                latency: 99999, // Put failed at the end
+                latency: 99999,
                 class: 'bad'
             });
         }
@@ -263,7 +254,7 @@
         return 'bad';
     }
 
-    // Sort function
+    // Automatic sort function
     function sortResults() {
         // Sort by latency (ascending - lowest first)
         testResults.sort((a, b) => a.latency - b.latency);
