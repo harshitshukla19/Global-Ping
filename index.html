@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Latency Test</title>
+    <title>Global Ping Test</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -81,7 +81,7 @@
         }
 
         .server-info { display: flex; flex-direction: column; }
-        .server-name { font-weight: 600; }
+        .server-name { font-weight: 600; font-size: 1.1rem; }
         .server-loc { font-size: 0.85rem; color: #64748b; }
 
         .latency-display {
@@ -112,8 +112,8 @@
 
 <div class="container">
     <header>
-        <h1>Global Network Latency Test</h1>
-        <p>Measure connection speed to our global points of presence.</p>
+        <h1>Global Ping Test</h1>
+        <p>Test latency across USA, Singapore, Germany, UK, Australia, and India.</p>
     </header>
 
     <div class="controls">
@@ -126,16 +126,15 @@
 </div>
 
 <script>
-    // CONFIGURATION: Add your server URLs here.
-    // IMPORTANT: These URLs must support CORS (Cross-Origin Resource Sharing) 
-    // or exist on your own servers.
-    // For this demo, we use specific endpoints that usually allow access.
+    // CONFIGURATION: Target servers for each country
+    // Using popular websites for each region to measure latency
     const servers = [
-        { name: "US East (N. Virginia)", url: "https://google.com", id: "us-east" },
-        { name: "US West (California)", url: "https://google.com", id: "us-west" }, // Using Google as a proxy example
-        { name: "Europe (Frankfurt)", url: "https://cloudflare.com", id: "eu-central" },
-        { name: "Asia Pacific (Tokyo)", url: "https://www.rakuten.co.jp/", id: "ap-tokyo" }, 
-        { name: "South America (Brazil)", url: "https://www.mercadolivre.com.br/", id: "sa-br" }
+        { name: "USA", url: "https://www.google.com", id: "usa" },
+        { name: "Singapore", url: "https://www.lazada.sg", id: "singapore" },
+        { name: "Germany", url: "https://www.amazon.de", id: "germany" },
+        { name: "United Kingdom (UK)", url: "https://www.bbc.co.uk", id: "uk" },
+        { name: "Australia", url: "https://www.abc.net.au", id: "australia" },
+        { name: "Asia (India)", url: "https://www.amazon.in", id: "india" }
     ];
 
     const resultsContainer = document.getElementById('results');
@@ -149,9 +148,9 @@
                 <div class="server-card" id="card-${server.id}">
                     <div class="server-info">
                         <span class="server-name">${server.name}</span>
-                        <span class="server-loc">Testing: ${new URL(server.url).hostname}</span>
+                        <span class="server-loc">Target: ${new URL(server.url).hostname}</span>
                     </div>
-                    <div class="latency-display" id="latency-${server.id}">--</div>
+                    <div class="latency-display" id="latency-${server.id}">-- ms</div>
                 </div>
             `;
         });
@@ -183,17 +182,13 @@
         const display = document.getElementById(`latency-${server.id}`);
         
         try {
-            // We use performance.now() for higher precision than Date.now()
             const startTime = performance.now();
 
-            // We use 'no-cors' mode limitation here usually returns an opaque response,
-            // but we can still measure the time until the request fails or succeeds.
-            // Note: Standard fetch with 'no-cors' returns an opaque response, 
-            // so we assume success if the network request doesn't throw.
-            
+            // mode: 'no-cors' allows request to proceed without CORS headers
+            // The browser will still make the request and we can measure time
             await fetch(server.url, {
                 method: 'GET',
-                mode: 'no-cors', // 'no-cors' allows request to go out even if no CORS headers (returns opaque)
+                mode: 'no-cors',
                 cache: 'no-store'
             });
 
@@ -204,8 +199,8 @@
             display.classList.add(getLatencyClass(latency));
 
         } catch (error) {
-            console.error(error);
-            display.innerText = "Fail";
+            console.error(`Error testing ${server.name}:`, error);
+            display.innerText = "Failed";
             display.classList.add('bad');
         }
     }
